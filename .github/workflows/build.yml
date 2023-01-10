@@ -1,0 +1,134 @@
+name: Build Flipper Firmware
+
+on:
+  schedule:
+    - cron: 0 0 * * *
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.firmware.name }} Firmware
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        firmware:
+          - name: Official
+            repo: flipperdevices/flipperzero-firmware
+          - name: Unleashed
+            repo: DarkFlippers/unleashed-firmware
+          - name: RogueMaster
+            repo: RogueMaster/flipperzero-firmware-wPlugins
+      fail-fast: false
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3
+      - name: Checkout Firmware
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ matrix.firmware.repo }}
+          path: firmware
+      - name: Set timezone
+        uses: szenius/set-timezone@v1.1
+        with:
+          timezoneLinux: "Pacific/Auckland"
+      - name: Build firmware
+        id: build
+        working-directory: firmware
+        run: |-
+          DATE=`date +%m%d`
+          TIME=`date +%H%M`
+          COMMIT=$(git rev-parse --short HEAD)
+
+          ./fbt updater_package COMPACT=1 DEBUG=0 DIST_SUFFIX=$COMMIT
+
+          NAME="${{ matrix.firmware.name }}-$DATE-$TIME-$COMMIT"
+          mv dist/f7-C/f7-update-$COMMIT "$NAME"
+          tar -czf "$NAME.tgz" "$NAME"
+          echo "name=$NAME" > $GITHUB_OUTPUT
+      - name: Upload tgz
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.firmware.name }}
+          path: firmware/${{ steps.build.outputs.name }}.tgz
+
+  consolidate:
+    name: Consolidate firmwares
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: firmwares
+      - name: Copy firmware bundles
+        run: |
+          mkdir output
+          cp -R firmwares/*/* output/
+      - name: Get template variables
+        id: variables
+        run: |
+          OfficialFilename=$(ls output/Official-*.tgz | cut -f2 -d'/')
+          UnleashedFilename=$(ls output/Unleashed-*.tgz | cut -f2 -d'/')
+          RogueMasterFilename=$(ls output/RogueMaster-*.tgz | cut -f2 -d'/')
+
+          echo "OfficialFilename=$OfficialFilename" >> $GITHUB_OUTPUT
+          echo "UnleashedFilename=$UnleashedFilename" >> $GITHUB_OUTPUT
+          echo "RogueMasterFilename=$RogueMasterFilename" >> $GITHUB_OUTPUT
+
+          echo "OfficialVersion=$(echo "$OfficialFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
+          echo "UnleashedVersion=$(echo "$UnleashedFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
+          echo "RogueMasterVersion=$(echo "$RogueMasterFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
+
+      - uses: badsyntax/github-action-render-template@v1.0.1
+        name: Render Index
+        id: render-template
+        with:
+          template: 'static/index.html.hbs'
+          inputs: |
+            {
+              "OfficialFilename": "${{ steps.variables.outputs.OfficialFilename }}",
+              "OfficialVersion": "${{ steps.variables.outputs.OfficialVersion }}",
+
+              "UnleashedFilename": "${{ steps.variables.outputs.UnleashedFilename }}",
+              "UnleashedVersion": "${{ steps.variables.outputs.UnleashedVersion }}",
+
+              "RogueMasterFilename": "${{ steps.variables.outputs.RogueMasterFilename }}",
+              "RogueMasterVersion": "${{ steps.variables.outputs.RogueMasterVersion }}"
+            }
+
+      - name: Output Rendered Template
+        run: |
+          echo "$OUTPUT" > output/index.html
+        env:
+          OUTPUT: ${{ steps.render-template.outputs.result }}
+
+      - uses: actions/upload-pages-artifact@v1
+        with:
+          path: output
+
+  deploy:
+    name: Deploy firmwares to Github Pages
+    runs-on: ubuntu-latest
+    needs: consolidate
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
