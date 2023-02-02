@@ -35,10 +35,6 @@ jobs:
         with:
           repository: ${{ matrix.firmware.repo }}
           path: firmware
-      - name: Set timezone
-        uses: szenius/set-timezone@v1.1
-        with:
-          timezoneLinux: "Pacific/Auckland"
       - name: Build firmware
         id: build
         working-directory: firmware
@@ -89,6 +85,8 @@ jobs:
           echo "UnleashedVersion=$(echo "$UnleashedFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
           echo "RogueMasterVersion=$(echo "$RogueMasterFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
 
+          echo "Timestamp=$(date '+%Y-%m-%d %H:%M %Z')" >> $GITHUB_OUTPUT
+
       - uses: badsyntax/github-action-render-template@v1.0.1
         name: Render Index
         id: render-template
@@ -103,7 +101,9 @@ jobs:
               "UnleashedVersion": "${{ steps.variables.outputs.UnleashedVersion }}",
 
               "RogueMasterFilename": "${{ steps.variables.outputs.RogueMasterFilename }}",
-              "RogueMasterVersion": "${{ steps.variables.outputs.RogueMasterVersion }}"
+              "RogueMasterVersion": "${{ steps.variables.outputs.RogueMasterVersion }}",
+
+              "Timestamp": "${{ steps.variables.outputs.Timestamp }}"
             }
 
       - name: Output Rendered Template
