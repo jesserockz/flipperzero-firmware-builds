@@ -9,7 +9,7 @@
 
     <p>This repository contains daily firmware builds for Flipper Zero.</p>
 
-    <p>Last build time: {{Timestamp}}</p>
+    <p>Last build time: <span id="timestamp">{{Timestamp}}</span></p>
 
     <h2><a target="_blank"
             href="https://lab.flipper.net/?url=https://jesserockz.github.io/flipperzero-firmware-builds/{{OfficialFilename}}&channel=dev&version={{OfficialVersion}}">Official</a>
@@ -29,6 +29,24 @@
         - <a href="https://github.com/RogueMaster/flipperzero-firmware-wPlugins">Repo</a>
     </h2>
 
+    <script type="text/javascript">
+        var timestamp = document.getElementById('timestamp'),
+            t         = new Date(timestamp.innerHTML),
+            hours     = t.getHours(), 
+            min       = t.getMinutes() + '', 
+            pm        = false,
+            months    = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+        if(hours > 11){
+           hours = hours - 12;
+           pm = true;
+        }
+    
+        if(hours == 0) hours = 12;
+        if(min.length == 1) min = '0' + min;
+    
+        timestamp.innerHTML = months[t.getMonth()] + ' ' + t.getDate() + ', ' + t.getFullYear() + ' ' + hours + ':' + min + ' ' + (pm ? 'pm' : 'am');
+    </script>
 </body>
 
 </html>
