@@ -10,5 +10,5 @@ updates:
       artifacts:
         applies-to: version-updates
         patterns:
-          - "@actions/upload-artifact"
-          - "@actions/download-artifact"
+          - "actions/upload-artifact"
+          - "actions/download-artifact"
