@@ -29,9 +29,9 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Checkout Firmware
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ matrix.firmware.repo }}
           path: firmware
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Download artifacts
         uses: actions/download-artifact@v5
         with:
