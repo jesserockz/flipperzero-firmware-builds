@@ -112,7 +112,7 @@ jobs:
         env:
           OUTPUT: ${{ steps.render-template.outputs.result }}
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: output
 
