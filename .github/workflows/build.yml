@@ -41,6 +41,11 @@ jobs:
         with:
           repository: ${{ matrix.firmware.repo }}
           path: firmware
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+        with:
+          key: ${{ matrix.firmware.name }}
+          max-size: 500M
       - name: Build firmware
         id: build
         working-directory: firmware
