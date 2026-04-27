@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Official",
+    "repo": "flipperdevices/flipperzero-firmware",
+    "channel": "dev"
+  },
+  {
+    "name": "Unleashed",
+    "repo": "DarkFlippers/unleashed-firmware",
+    "channel": "Unleashed"
+  },
+  {
+    "name": "RogueMaster",
+    "repo": "RogueMaster/flipperzero-firmware-wPlugins",
+    "channel": "RogueMaster"
+  }
+]

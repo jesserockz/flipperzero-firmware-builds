@@ -14,18 +14,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  setup:
+    name: Configure firmwares
+    runs-on: ubuntu-latest
+    outputs:
+      firmwares: ${{ steps.config.outputs.firmwares }}
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: config
+        run: echo "firmwares=$(jq -c . firmwares.json)" >> $GITHUB_OUTPUT
+
   build:
     name: Build ${{ matrix.firmware.name }} Firmware
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        firmware:
-          - name: Official
-            repo: flipperdevices/flipperzero-firmware
-          - name: Unleashed
-            repo: DarkFlippers/unleashed-firmware
-          - name: RogueMaster
-            repo: RogueMaster/flipperzero-firmware-wPlugins
+        firmware: ${{ fromJSON(needs.setup.outputs.firmwares) }}
       fail-fast: false
     steps:
       - name: Checkout this repo
@@ -57,7 +63,7 @@ jobs:
 
   consolidate:
     name: Consolidate firmwares
-    needs: build
+    needs: [setup, build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
@@ -70,21 +76,24 @@ jobs:
         run: |
           mkdir output
           cp -R firmwares/*/* output/
-      - name: Get template variables
+      - name: Build template inputs
         id: variables
+        env:
+          FIRMWARES_INPUT: ${{ needs.setup.outputs.firmwares }}
         run: |
-          OfficialFilename=$(ls output/Official-*.tgz | cut -f2 -d'/')
-          UnleashedFilename=$(ls output/Unleashed-*.tgz | cut -f2 -d'/')
-          RogueMasterFilename=$(ls output/RogueMaster-*.tgz | cut -f2 -d'/')
+          ENRICHED='[]'
+          while IFS= read -r row; do
+            name=$(echo "$row" | jq -r '.name')
+            filename=$(ls output/${name}-*.tgz | head -n1 | cut -f2 -d'/')
+            version=$(echo "$filename" | cut -f1 -d'.' | cut -d'-' -f2-4)
+            ENRICHED=$(echo "$ENRICHED" | jq -c \
+              --argjson item "$row" \
+              --arg fn "$filename" \
+              --arg ver "$version" \
+              '. + [{Name: $item.name, Repo: $item.repo, Channel: $item.channel, Filename: $fn, Version: $ver}]')
+          done < <(echo "$FIRMWARES_INPUT" | jq -c '.[]')
 
-          echo "OfficialFilename=$OfficialFilename" >> $GITHUB_OUTPUT
-          echo "UnleashedFilename=$UnleashedFilename" >> $GITHUB_OUTPUT
-          echo "RogueMasterFilename=$RogueMasterFilename" >> $GITHUB_OUTPUT
-
-          echo "OfficialVersion=$(echo "$OfficialFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
-          echo "UnleashedVersion=$(echo "$UnleashedFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
-          echo "RogueMasterVersion=$(echo "$RogueMasterFilename" | cut -f1 -d'.' | cut -d'-' -f2-4)" >> $GITHUB_OUTPUT
-
+          echo "Firmwares=$ENRICHED" >> $GITHUB_OUTPUT
           echo "Timestamp=$(date '+%Y-%m-%d %H:%M %Z')" >> $GITHUB_OUTPUT
 
       - uses: badsyntax/github-action-render-template@710c485d6c34904bb78f891c078103015584203d # v1.0.1
@@ -94,15 +103,7 @@ jobs:
           template: "static/index.html.hbs"
           inputs: |
             {
-              "OfficialFilename": "${{ steps.variables.outputs.OfficialFilename }}",
-              "OfficialVersion": "${{ steps.variables.outputs.OfficialVersion }}",
-
-              "UnleashedFilename": "${{ steps.variables.outputs.UnleashedFilename }}",
-              "UnleashedVersion": "${{ steps.variables.outputs.UnleashedVersion }}",
-
-              "RogueMasterFilename": "${{ steps.variables.outputs.RogueMasterFilename }}",
-              "RogueMasterVersion": "${{ steps.variables.outputs.RogueMasterVersion }}",
-
+              "Firmwares": ${{ steps.variables.outputs.Firmwares }},
               "Timestamp": "${{ steps.variables.outputs.Timestamp }}"
             }
 
