@@ -13,5 +13,10 @@
     "name": "RogueMaster",
     "repo": "RogueMaster/flipperzero-firmware-wPlugins",
     "channel": "RogueMaster"
+  },
+  {
+    "name": "Momentum",
+    "repo": "Next-Flip/Momentum-Firmware",
+    "channel": "Momentum"
   }
 ]
