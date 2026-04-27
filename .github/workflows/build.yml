@@ -20,17 +20,10 @@ jobs:
     outputs:
       firmwares: ${{ steps.config.outputs.firmwares }}
     steps:
+      - name: Checkout this repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - id: config
-        run: |
-          FIRMWARES=$(jq -c . <<'EOF'
-          [
-            {"name": "Official",    "repo": "flipperdevices/flipperzero-firmware",      "channel": "dev"},
-            {"name": "Unleashed",   "repo": "DarkFlippers/unleashed-firmware",          "channel": "Unleashed"},
-            {"name": "RogueMaster", "repo": "RogueMaster/flipperzero-firmware-wPlugins","channel": "RogueMaster"}
-          ]
-          EOF
-          )
-          echo "firmwares=$FIRMWARES" >> $GITHUB_OUTPUT
+        run: echo "firmwares=$(jq -c . firmwares.json)" >> $GITHUB_OUTPUT
 
   build:
     name: Build ${{ matrix.firmware.name }} Firmware
